@@ -5,24 +5,60 @@ add_shortcode('cufaqs_form', 'cufaqs_form');
 add_action( 'hook-cufaqs', 'cufaqs_form');
 
 function cufaqs_form() { 
+  // print_r(wp_upload_dir());
   global $wpdb;
   if(isset($_POST['save']) && !isset($_POST['question_id']))
   {
     $category=$_POST["category"];
     $question=$_POST["question"];
     $answer=$_POST["answer"];
+    if(isset($_FILES['attachment']) && !empty($_FILES['attachment']['name'])){
+      $attachment_name=$_FILES['attachment']['name'];
+      $attachment_type=$_FILES['attachment']['type'];
+      $attachment_size=$_FILES['attachment']['size'];
+      $attachment_temp_loc=$_FILES['attachment']['tmp_name'];
+
+      $wp_upload_dir = wp_upload_dir();
+
+      $path = str_replace('\\', '/', $wp_upload_dir['basedir']);
+
+      $dirname = "/faq-uploads/";
+
+      $subdirName = $path.$dirname;
+
+      if (!file_exists($subdirName)) {
+
+          mkdir($subdirName, 0744);
+
+      }
+
+      $attachment_store=$subdirName.$attachment_name;
+
+      $fileUrl = $wp_upload_dir['baseurl'].$dirname.$attachment_name;
+
+      if(move_uploaded_file($attachment_temp_loc, $attachment_store)){
+        // echo "File are uploaded";
+      }else{
+        echo "File uploading error!";
+      }
+    }else{
+      $fileUrl = "";
+    }
+    
+    // print_r($attachment);
     if ($category!=''&& $question!=''&& $answer!='') {
       $success = $wpdb->insert("wp_cu_faqs",array(
         "category"=>$category,
         "question"=>$question,
         "answer"=>$answer,
+        "attachment" => $fileUrl,
 
       ));
+      if ($success) {
+        echo "Data saved successfully.";
+      }
     }else{
       echo "Please fill the input fields.";
-    }
-    if ($success) {
-      echo "Data saved successfully.";
     }
   }
 
@@ -32,12 +68,44 @@ function cufaqs_form() {
     $question=$_POST["question"];
     $answer=$_POST["answer"];
     $questionId=$_POST["question_id"];
+    if(isset($_FILES['attachment']) && !empty($_FILES['attachment']['name'])){
+      $attachment_name=$_FILES['attachment']['name'];
+      $attachment_type=$_FILES['attachment']['type'];
+      $attachment_size=$_FILES['attachment']['size'];
+      $attachment_temp_loc=$_FILES['attachment']['tmp_name'];
 
+      $wp_upload_dir = wp_upload_dir();
+
+      $path = str_replace('\\', '/', $wp_upload_dir['basedir']);
+
+      $dirname = "/faq-uploads/";
+
+      $subdirName = $path.$dirname;
+
+      if (!file_exists($subdirName)) {
+
+          mkdir($subdirName, 0744);
+
+      }
+
+      $attachment_store=$subdirName.$attachment_name;
+
+      $fileUrl = $wp_upload_dir['baseurl'].$dirname.$attachment_name;
+
+      if(move_uploaded_file($attachment_temp_loc, $attachment_store)){
+        // echo "File are uploaded";
+      }else{
+        echo "File uploading error!";
+      }
+    }else{
+      $fileUrl = "";
+    }
     $table = $wpdb->prefix."cu_faqs";
     $data = [
       'category' =>$category,
       'question' =>$question,
       'answer' => $answer,
+      "attachment" => $fileUrl,
     ];
 
     $where = [
@@ -54,9 +122,9 @@ function cufaqs_form() {
   <div class="row">
   <div class="col-md-5" style="margin-right:50px">
   <h2 style="color:#E74C3C">Add New FAQs</h2>
-  <form class="post_faq" action="'.$_SERVER["REQUEST_URI"].'" method="post">
+  <form class="post_faq" action="'.$_SERVER["REQUEST_URI"].'" method="post" enctype="multipart/form-data">
         <div class="form-group">
-           <label>Category</label>
+           <label>Category<span style="color:red;">*</span></label>
            <select class="form-control" name="category">
               <option value="">Select</option>';
           $results = $wpdb->get_results("SELECT * FROM `wp_cu_faq_categories` ORDER BY `name`");
@@ -68,12 +136,16 @@ function cufaqs_form() {
     $output .='</select>
         </div>
         <div class="form-group">
-            <label>Question</label>
-            <input type="text" class="form-control" name="question" placeholder="Question" autocomplete="off"style="width:97%">
+            <label>Question<span style="color:red;">*</span></label>
+            <input type="text" class="form-control" name="question" placeholder="Question" autocomplete="off"style="width:95%">
         </div>
         <div class="form-group">
-            <label>Answer</label>
-            <textarea class="form-control" placeholder="Type answer" name="answer" style="width:97%"></textarea>
+            <label>Answer<span style="color:red;">*</span></label>
+            <textarea class="form-control" placeholder="Type answer" name="answer" style="width:95%"></textarea>
+        </div>
+        <div class="form-group">
+            <label>Attachment (optional)</label>
+            <input type="file" class="form-control" name="attachment" style="width:96%">
         </div>
         <button type="submit" class="btn btn-primary" name="save" value="save">Post</button>
   </form>
@@ -101,7 +173,7 @@ function cufaqs_form() {
                        $answer = $result2->answer;
 
       $output .='<div class="card question" id="collapseOne_container_'.$question_id.'"><button class="accordion" id="collapseOne_'.$question_id.'" style="color: #000;font-weight:bold;">'.$i .'.'.$question. '<i class="fas fa-pencil-alt edit_faq" id="'.$question_id.'" style="float:right"></i></button></div><div class="container">
-        <form class="post_faq" action="'.$_SERVER["REQUEST_URI"].'" method="post" id="post_faq_'.$question_id.'" style="display:none;">
+        <form class="post_faq" action="'.$_SERVER["REQUEST_URI"].'" method="post" enctype="multipart/form-data" id="post_faq_'.$question_id.'" style="display:none;">
           <div class="form-group">
              <label>Category</label>
              <select class="form-control" name="category">
@@ -122,6 +194,10 @@ function cufaqs_form() {
           <div class="form-group">
               <label>Answer</label>
               <textarea class="form-control" placeholder="Type answer" name="answer" style="width:97%">'.$answer.'</textarea>
+          </div>
+          <div class="form-group">
+              <label>Attachment (optional)</label>
+              <input type="file" class="form-control" name="attachment" style="width:96%">
           </div>
           <input type="hidden" name="question_id" value="'.$question_id.'">
           <button type="submit" class="btn btn-primary" name="update" value="update">Update</button>
